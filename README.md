@@ -5,7 +5,7 @@ Use the follwing command to clone project
 
 #### git clone https://github.com/cjmorale/kernel_pca
 
-The app is currently deployed using shiny.io at the following location
+The app is currently deployed using shiny.io server, and can be accessed using the following location
 https://cjmorale2004.shinyapps.io/kpca/
  
 The application uses the well known __iris__ dataset. Further information about this dataset can be found here
