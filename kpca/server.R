@@ -59,16 +59,15 @@ shinyServer(function(input, output) {
                         offset=input$offset_poly){
         return((scale*(t(x) %*% (y))+offset)^degree)
       }
-      print(input$degree_poly)
-      print(k_x_y)
-      k_x_y
     }
     if(input$kernel == 'normal'){
       k_x_y <- function(x, y, 
                         sigma=input$sigma_normal){
-        #return((scale*(t(x) %*% (y))+offset)^degree)
+        # input is text needs to be converted to numeric.
+        sigma <- as.numeric(sigma)
+        norm <- (2*crossprod(x,y) - crossprod(x) - crossprod(y))
+        return(exp(-sigma * norm))
       }
-
     }
     if(input$kernel == 'tan'){
       k_x_y <- function(x, y, 
@@ -76,8 +75,56 @@ shinyServer(function(input, output) {
                         offset=input$offset_tan){
         return(tanh(scale*(t(x) %*% (y))+offset))
       }
-
     }
+    
+    if(input$kernel == 'laplace'){
+      k_x_y <- function(x, y, 
+                        sigma = input$sigma_laplace){
+        sigma <- as.numeric(sigma)
+        return(exp(-sigma*sqrt(-(round(2*crossprod(x,y) - crossprod(x) - crossprod(y),9)))))
+      }
+    }
+    
+    if(input$kernel == 'bessel'){
+      k_x_y <- function(x, y, 
+                        order = input$order_bessel,
+                        sigma = input$sigma_bessel,
+                        degree = input$degree_bessel){
+        sigma <- as.numeric(sigma)
+        lim <- 1 / (gamma(order+1) * 2 ^ (order))
+        
+        bkt <- sigma * sqrt(-(round(2*crossprod(x,y) - crossprod(x) - crossprod(y),9)))
+        if(bkt < 10e-5){
+          res <- lim
+        }
+        else{
+          res <- besselJ(bkt, order) * (bkt ^ (-order))
+        }
+
+        return(as.numeric((res / lim) ^ degree))
+      }
+    }
+    
+    if(input$kernel == 'anova'){
+      k_x_y <- function(x, y, 
+                        degree = input$degree_anova,
+                        sigma = input$sigma_anova){
+        sigma <- as.numeric(sigma)  
+       
+        res <- sum(exp(-sigma * (x - y)^2))
+
+        return((res) ^ degree)
+      }
+    }
+    
+    if(input$kernel == 'spline'){
+      k_x_y <- function(x, y){
+        min_val <- pmin(x,y)
+        res <- 1 + x * y * (1 + min_val) - ((x+y) / 2)*min_val^2 + (min_val^3) / 3
+        return(prod(res))
+      }
+    }
+    
 
     k_x_y
   })
@@ -94,11 +141,29 @@ shinyServer(function(input, output) {
   
   # Compute PC of kernel matrix
 
-
-  output$distPlot <- renderPlot({
+  output$pc_plots <- renderPlot({
     # Make a cool plot
-    plot(PC()$pc[, 1], PC()$pc[, 2], col = iris[, 5], cex = 0.5)
+    par(mfrow = c(1,2))
+    
+    plot(PC()$pc[, 1], PC()$pc[, 2], col = iris[, 5], cex = 0.5, 
+         xlab = 'Principal Component 1',  ylab = 'Principal Component 2',
+         main = 'Principal Component Scores Plot')
+    
+    plot(1:length(PC()$eigen), PC()$eigen, xlab = 'Component Number',  
+         ylab = 'Eigenvalue', type = 'l', main = 'Principal Component Scree Plot')
   })
+
+  
+  
+  output$report <- downloadHandler(
+    # For PDF output, change this to "report.pdf"
+    filename = "report.html",
+    content = function(file) {
+      
+      rmarkdown::render("report.Rmd", output_file = file)
+
+    }
+  )
   
 })
 
